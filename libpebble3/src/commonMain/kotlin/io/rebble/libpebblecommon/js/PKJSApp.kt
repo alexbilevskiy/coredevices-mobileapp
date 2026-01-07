@@ -61,6 +61,7 @@ class PKJSApp(
     companion object {
         private val logger = Logger.withTag(PKJSApp::class.simpleName!!)
     }
+    private val targetPackages = appInfo.companionApp?.android?.apps.orEmpty().mapNotNull { it.pkg }
     override val uuid: Uuid by lazy { Uuid.parse(appInfo.uuid) }
     private var jsRunner: JsRunner? = null
     private var runningScope: CoroutineScope? = null
@@ -87,8 +88,7 @@ class PKJSApp(
     }
 
     override fun isAllowedToCommunicate(pkg: String): Boolean {
-        //TODO: implement actual check
-        return true
+        return targetPackages.contains(pkg)
     }
 
     override suspend fun sendMessage(appMessageDictionary: AppMessageDictionary): AppMessageResult {
