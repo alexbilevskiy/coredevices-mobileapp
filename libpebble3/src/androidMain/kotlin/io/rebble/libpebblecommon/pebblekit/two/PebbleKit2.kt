@@ -2,6 +2,7 @@ package io.rebble.libpebblecommon.pebblekit.two
 
 import co.touchlab.kermit.Logger
 import io.rebble.libpebblecommon.ErrorTracker
+import io.rebble.libpebblecommon.connection.AppSender
 import io.rebble.libpebblecommon.connection.CompanionApp
 import io.rebble.libpebblecommon.connection.UserFacingError
 import io.rebble.libpebblecommon.di.LibPebbleKoinComponent
@@ -37,13 +38,13 @@ import kotlin.uuid.toJavaUuid
 class PebbleKit2(
     private val device: CompanionAppDevice,
     private val appInfo: PbwAppInfo
-) : LibPebbleKoinComponent, CompanionApp {
+) : LibPebbleKoinComponent, CompanionApp, AppSender {
     private val nextTransactionId = atomic(0)
     private val targetPackages = appInfo.companionApp?.android?.apps.orEmpty().mapNotNull { it.pkg }
     private val connector = DefaultPebbleListenerConnector(getKoin().get(), targetPackages)
     private val errorTracker: ErrorTracker = getKoin().get<ErrorTracker>()
 
-    val uuid: Uuid by lazy { Uuid.Companion.parse(appInfo.uuid) }
+    override val uuid: Uuid by lazy { Uuid.Companion.parse(appInfo.uuid) }
     private var runningScope: CoroutineScope? = null
     private var incomingConsumer: Job? = null
 
@@ -99,13 +100,13 @@ class PebbleKit2(
     }
 
 
-    fun isAllowedToCommunicate(pkg: String): Boolean {
+    override fun isAllowedToCommunicate(pkg: String): Boolean {
         return targetPackages.contains(pkg)
     }
 
-    suspend fun sendMessage(pebbleDictionary: PebbleDictionary): AppMessageResult {
+    override suspend fun sendMessage(appMessageDictionary: AppMessageDictionary): AppMessageResult {
         val transactionId = (nextTransactionId.getAndIncrement() % UByte.MAX_VALUE.toInt()).toUByte()
-        return device.sendAppMessage(AppMessageData(transactionId, uuid, pebbleDictionary.toAppMessageDict()))
+        return device.sendAppMessage(AppMessageData(transactionId, uuid, appMessageDictionary))
     }
 
     private fun launchIncomingAppMessageHandler(scope: CoroutineScope) {
@@ -165,7 +166,7 @@ class PebbleKit2(
     }
 }
 
-private fun PebbleDictionary.toAppMessageDict(): AppMessageDictionary {
+fun PebbleDictionary.toAppMessageDict(): AppMessageDictionary {
     return map { it.key.toInt() to it.value.value }.toMap()
 }
 

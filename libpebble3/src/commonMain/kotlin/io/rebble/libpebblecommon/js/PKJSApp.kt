@@ -1,6 +1,7 @@
 package io.rebble.libpebblecommon.js
 
 import co.touchlab.kermit.Logger
+import io.rebble.libpebblecommon.connection.AppSender
 import io.rebble.libpebblecommon.connection.CompanionApp
 import io.rebble.libpebblecommon.connection.ConnectedPebble
 import io.rebble.libpebblecommon.database.entity.LockerEntry
@@ -56,11 +57,11 @@ class PKJSApp(
     private val jsPath: Path,
     val appInfo: PbwAppInfo,
     val lockerEntry: LockerEntry,
-): LibPebbleKoinComponent, CompanionApp {
+): LibPebbleKoinComponent, CompanionApp, AppSender {
     companion object {
         private val logger = Logger.withTag(PKJSApp::class.simpleName!!)
     }
-    val uuid: Uuid by lazy { Uuid.parse(appInfo.uuid) }
+    override val uuid: Uuid by lazy { Uuid.parse(appInfo.uuid) }
     private var jsRunner: JsRunner? = null
     private var runningScope: CoroutineScope? = null
     private val urlOpenRequests = Channel<String>(Channel.RENDEZVOUS)
@@ -83,6 +84,16 @@ class PKJSApp(
 
     fun debugForceGC() {
         jsRunner?.debugForceGC() ?: error("JsRunner not initialized")
+    }
+
+    override fun isAllowedToCommunicate(pkg: String): Boolean {
+        //TODO: implement actual check
+        return true
+    }
+
+    override suspend fun sendMessage(appMessageDictionary: AppMessageDictionary): AppMessageResult {
+        val tID = device.transactionSequence.next()
+        return device.sendAppMessage(AppMessageData(tID, uuid, appMessageDictionary))
     }
 
     private fun launchIncomingAppMessageHandler(device: ConnectedPebble.AppMessages, scope: CoroutineScope) {

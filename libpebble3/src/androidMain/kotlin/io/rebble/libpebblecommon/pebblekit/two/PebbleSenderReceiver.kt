@@ -1,5 +1,6 @@
 package io.rebble.libpebblecommon.pebblekit.two
 
+import io.rebble.libpebblecommon.connection.AppSender
 import io.rebble.libpebblecommon.connection.ConnectedPebbleDevice
 import io.rebble.libpebblecommon.connection.LibPebble
 import io.rebble.libpebblecommon.connection.Watches
@@ -32,7 +33,7 @@ class PebbleSenderReceiver : BasePebbleSenderReceiver(), LibPebbleKoinComponent 
         watches: List<WatchIdentifier>?
     ): Map<WatchIdentifier, TransmissionResult> {
         return runOnConnectedWatches(watches) { watch ->
-            val companionApp = watch.currentCompanionAppSession.value as? PebbleKit2
+            val companionApp = watch.currentCompanionAppSession.value as? AppSender
 
             if (companionApp == null || companionApp.uuid.toJavaUuid() != watchappUUID) {
                 return@runOnConnectedWatches TransmissionResult.FailedDifferentAppOpen
@@ -44,7 +45,7 @@ class PebbleSenderReceiver : BasePebbleSenderReceiver(), LibPebbleKoinComponent 
                 return@runOnConnectedWatches TransmissionResult.FailedNoPermissions
             }
 
-            val res = companionApp.sendMessage(data)
+            val res = companionApp.sendMessage(data.toAppMessageDict())
             when (res) {
                 is AppMessageResult.ACK -> TransmissionResult.Success
                 is AppMessageResult.NACK -> TransmissionResult.FailedWatchNacked
